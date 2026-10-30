@@ -1,0 +1,49 @@
+text,emotion
+"I am extremely happy today and couldn't ask for more",Happy
+"I finally got selected for my dream job!",Happy
+"We celebrated all night with laughter and great joy",Happy
+"This is the best day of my life so far",Happy
+"I am so proud of my accomplishments and success",Happy
+"I feel very blessed and wonderful right now",Happy
+"What a fantastic achievement and wonderful milestone",Happy
+"Everything is working out so perfectly and happily",Happy
+"I feel very sad and depressed about this loss",Sad
+"I am really upset and heartbroken about what happened",Sad
+"I can't stop crying after hearing the tragic news",Sad
+"I feel so lonely, empty and abandoned inside",Sad
+"This grief and sorrow is overwhelming for me",Sad
+"I failed the final examination despite working hard",Sad
+"It is deeply disappointing and painful to bear",Sad
+"Everything feels gloomy, hopeless and miserable",Sad
+"I am so furious and angry at how I was treated",Angry
+"This makes my blood boil with sheer rage",Angry
+"I hate when people deliberately cheat and lie to me",Angry
+"The unfair treatment made me outrageously mad",Angry
+"I am irritated and annoyed by this constant disrespect",Angry
+"He betrayed my trust and I am filled with hostility",Angry
+"This injustice is completely unacceptable and infuriating",Angry
+"I am scared about tomorrow's critical operation",Fear
+"I feel terrified and panicked in dark enclosed rooms",Fear
+"The sudden danger made me dread what is to come",Fear
+"I am anxious, nervous and frightened about the future",Fear
+"There is a creepy threat lurking right behind us",Fear
+"I am having a panic attack and feeling intense fear",Fear
+"The horror movie gave me terrible chills and dread",Fear
+"Wow I didn't expect that incredible twist at all!",Surprise
+"I am completely shocked and astonished by this news",Surprise
+"What a sudden and unbelievable miracle!",Surprise
+"Whoa that caught me completely off guard and stunned me",Surprise
+"I was startled by the unexpected loud explosion",Surprise
+"It amazed me how quickly the circumstances reversed",Surprise
+"This spoiled rotten milk smells absolutely disgusting",Disgust
+"That dirty foul trash is utterly repulsive and vile",Disgust
+"Eww that sight is sickening and nauseating to watch",Disgust
+"I feel revulsion and grossed out by that filthy behavior",Disgust
+"The rotten food gave off a stinky and offensive odor",Disgust
+"The meeting is scheduled for 3 PM on Thursday afternoon",Neutral
+"I am sitting at my desk reading the technical manual",Neutral
+"The report contains forty pages of tabular data",Neutral
+"Today is an ordinary working day at the office",Neutral
+"Please find the attached document for your review",Neutral
+"The train arrived exactly on time at the platform",Neutral
+"The temperature outside is twenty-two degrees Celsius",Neutral

@@ -1,0 +1,6 @@
+{
+  "name": "EMOTIX — Multimodal Emotion Intelligence",
+  "description": "Emotion Detection in Text & Images Using Natural Language Processing and Artificial Intelligence",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
