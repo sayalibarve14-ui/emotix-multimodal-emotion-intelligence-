@@ -1,3 +1,4 @@
+
 import express, { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -5,6 +6,7 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
+
 import { EmotixDatabase } from './server/database/database.js';
 import { TextEmotionClassifier } from './server/ml/textEmotion.js';
 import { ImageEmotionClassifier } from './server/ml/imageEmotion.js';
@@ -12,9 +14,56 @@ import { MultimodalEmotionFusion } from './server/ml/multimodal.js';
 import { User } from './server/types.js';
 
 const app = express();
+
 const PORT = Number(process.env.PORT) || 3000;
+
+// Set JWT_SECRET in your hosting provider's environment variables.
 const JWT_SECRET = process.env.JWT_SECRET || 'emotix_college_project_jwt_secret_2026';
 
+// ==========================================
+// CORS CONFIGURATION
+// ==========================================
+
+const allowedOrigins = [
+  'https://sayalibarve14-ui.github.io'
+];
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Vary', 'Origin');
+
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
+
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+// ==========================================
+// BODY PARSING
+// ==========================================
+
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+// ==========================================
+// KEEP YOUR EXISTING CODE BELOW
+// ==========================================
 // Setup upload directory
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) {
