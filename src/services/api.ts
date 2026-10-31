@@ -1,3 +1,4 @@
+
 import {
   TextAnalysisResult,
   ImageAnalysisResult,
@@ -9,39 +10,107 @@ import {
   User
 } from '../types/index.js';
 
-const API_BASE = '/api';
+// ==========================================
+// API CONFIGURATION
+// ==========================================
+
+// Set VITE_API_BASE_URL to your deployed backend URL.
+// Example: https://emotix-backend.onrender.com
+// Local development automatically uses /api.
+
+const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim();
+
+const API_BASE = configuredBase
+  ? `${configuredBase.replace(/\/+$/, '').replace(/\/api$/i, '')}/api`
+  : '/api';
+
+// ==========================================
+// AUTHENTICATION HEADERS
+// ==========================================
 
 const getAuthHeaders = (): Record<string, string> => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('emotix_auth_token') : null;
+  const token =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('emotix_auth_token')
+      : null;
+
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+// ==========================================
+// COMMON API RESPONSE HANDLER
+// ==========================================
+
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        ...getAuthHeaders(),
+        ...(options.headers || {})
+      }
+    });
+  } catch {
+    throw new Error(
+      'Cannot connect to EMOTIX backend. Please check your internet connection or backend server.'
+    );
+  }
+
+  const responseText = await response.text();
+
+  let data: any;
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(
+      `Backend returned an invalid response (${response.status}). Check the API URL and backend deployment.`
+    );
+  }
+
+  if (!response.ok || data.success === false) {
+    throw new Error(
+      data.error || `API request failed with status ${response.status}.`
+    );
+  }
+
+  return data as T;
+}
+
+// ==========================================
+// EMOTIX API SERVICE
+// ==========================================
+
 export class ApiService {
-  /**
-   * Analyze raw text for emotions
-   */
-  public static async analyzeText(text: string): Promise<TextAnalysisResult> {
-    const res = await fetch(`${API_BASE}/analyze/text`, {
+
+  // 1. TEXT EMOTION ANALYSIS
+
+  public static async analyzeText(
+    text: string
+  ): Promise<TextAnalysisResult> {
+    return apiRequest<TextAnalysisResult>('/analyze/text', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ text })
     });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to analyze text emotion.');
-    }
-    return data;
   }
 
-  /**
-   * Analyze image for face emotions
-   */
-  public static async analyzeImage(file?: File, sampleName?: string, webcamDataUrl?: string): Promise<ImageAnalysisResult> {
+  // 2. IMAGE EMOTION ANALYSIS
+
+  public static async analyzeImage(
+    file?: File,
+    sampleName?: string,
+    webcamDataUrl?: string
+  ): Promise<ImageAnalysisResult> {
     const formData = new FormData();
+
     if (file) {
       formData.append('image', file);
     } else if (webcamDataUrl) {
@@ -49,48 +118,39 @@ export class ApiService {
     } else if (sampleName) {
       formData.append('sample_image', sampleName);
     } else {
-      throw new Error('Please select an image file or capture via webcam.');
+      throw new Error(
+        'Please select an image file or capture via webcam.'
+      );
     }
 
-    const res = await fetch(`${API_BASE}/analyze/image`, {
+    return apiRequest<ImageAnalysisResult>('/analyze/image', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: formData
     });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to analyze image emotion.');
-    }
-    return data;
   }
 
-  /**
-   * Analyze voice-to-text transcript
-   */
-  public static async analyzeVoice(transcript: string, audioFile?: File): Promise<VoiceAnalysisResult> {
+  // 3. VOICE EMOTION ANALYSIS
+
+  public static async analyzeVoice(
+    transcript: string,
+    audioFile?: File
+  ): Promise<VoiceAnalysisResult> {
     const formData = new FormData();
+
     formData.append('transcript', transcript);
+
     if (audioFile) {
       formData.append('audio', audioFile);
     }
 
-    const res = await fetch(`${API_BASE}/analyze/voice`, {
+    return apiRequest<VoiceAnalysisResult>('/analyze/voice', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: formData
     });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to analyze voice recording.');
-    }
-    return data;
   }
 
-  /**
-   * Multimodal late fusion analysis (text + face + voice)
-   */
+  // 4. MULTIMODAL EMOTION ANALYSIS
+
   public static async analyzeMultimodal(params: {
     text?: string;
     file?: File;
@@ -102,165 +162,204 @@ export class ApiService {
     voiceWeight?: number;
   }): Promise<MultimodalResult> {
     const formData = new FormData();
-    if (params.text) formData.append('text', params.text);
-    if (params.voiceTranscript) formData.append('voice_transcript', params.voiceTranscript);
-    if (params.file) formData.append('image', params.file);
-    else if (params.sampleName) formData.append('sample_image', params.sampleName);
-    if (params.voiceFile) formData.append('audio', params.voiceFile);
 
-    formData.append('text_weight', String(params.textWeight ?? 0.4));
-    formData.append('image_weight', String(params.imageWeight ?? 0.4));
-    formData.append('voice_weight', String(params.voiceWeight ?? 0.2));
+    if (params.text) {
+      formData.append('text', params.text);
+    }
 
-    const res = await fetch(`${API_BASE}/analyze/multimodal`, {
+    if (params.voiceTranscript) {
+      formData.append('voice_transcript', params.voiceTranscript);
+    }
+
+    if (params.file) {
+      formData.append('image', params.file);
+    } else if (params.sampleName) {
+      formData.append('sample_image', params.sampleName);
+    }
+
+    if (params.voiceFile) {
+      formData.append('audio', params.voiceFile);
+    }
+
+    formData.append(
+      'text_weight',
+      String(params.textWeight ?? 0.4)
+    );
+
+    formData.append(
+      'image_weight',
+      String(params.imageWeight ?? 0.4)
+    );
+
+    formData.append(
+      'voice_weight',
+      String(params.voiceWeight ?? 0.2)
+    );
+
+    return apiRequest<MultimodalResult>('/analyze/multimodal', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: formData
     });
-
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to process multimodal analysis.');
-    }
-    return data;
   }
 
-  /**
-   * Retrieve user-specific history (or all if admin)
-   */
-  public static async getHistory(all = false): Promise<AnalysisRecord[]> {
-    const url = all ? `${API_BASE}/history?all=true` : `${API_BASE}/history`;
-    const res = await fetch(url, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to fetch analysis history.');
-    }
+  // 5. ANALYSIS HISTORY
+
+  public static async getHistory(
+    all = false
+  ): Promise<AnalysisRecord[]> {
+    const endpoint = all
+      ? '/history?all=true'
+      : '/history';
+
+    const data = await apiRequest<{
+      success: boolean;
+      history: AnalysisRecord[];
+    }>(endpoint);
+
     return data.history || [];
   }
 
-  /**
-   * Retrieve single record by ID
-   */
-  public static async getHistoryItem(id: number): Promise<AnalysisRecord> {
-    const res = await fetch(`${API_BASE}/history/${id}`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to fetch history item.');
-    }
+  // 6. GET SINGLE HISTORY RECORD
+
+  public static async getHistoryItem(
+    id: number
+  ): Promise<AnalysisRecord> {
+    const data = await apiRequest<{
+      success: boolean;
+      record: AnalysisRecord;
+    }>(`/history/${id}`);
+
     return data.record;
   }
 
-  /**
-   * Delete single record
-   */
-  public static async deleteHistoryItem(id: number): Promise<boolean> {
-    const res = await fetch(`${API_BASE}/history/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
+  // 7. DELETE HISTORY RECORD
+
+  public static async deleteHistoryItem(
+    id: number
+  ): Promise<boolean> {
+    const data = await apiRequest<{
+      success: boolean;
+    }>(`/history/${id}`, {
+      method: 'DELETE'
     });
-    const data = await res.json();
+
     return data.success ?? false;
   }
 
-  /**
-   * Clear all history records for current user
-   */
+  // 8. CLEAR ALL HISTORY
+
   public static async clearAllHistory(): Promise<boolean> {
-    const res = await fetch(`${API_BASE}/history`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
+    const data = await apiRequest<{
+      success: boolean;
+    }>('/history', {
+      method: 'DELETE'
     });
-    const data = await res.json();
+
     return data.success ?? false;
   }
 
-  /**
-   * Get dashboard statistics
-   */
-  public static async getDashboardStats(all = false): Promise<DashboardStats> {
-    const url = all ? `${API_BASE}/dashboard?all=true` : `${API_BASE}/dashboard`;
-    const res = await fetch(url, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to retrieve dashboard stats.');
-    }
+  // 9. DASHBOARD STATISTICS
+
+  public static async getDashboardStats(
+    all = false
+  ): Promise<DashboardStats> {
+    const endpoint = all
+      ? '/dashboard?all=true'
+      : '/dashboard';
+
+    const data = await apiRequest<{
+      success: boolean;
+      stats: DashboardStats;
+    }>(endpoint);
+
     return data.stats;
   }
 
-  /**
-   * Get admin system statistics
-   */
+  // 10. ADMIN STATISTICS
+
   public static async getAdminStats(): Promise<AdminStats> {
-    const res = await fetch(`${API_BASE}/admin/stats`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to retrieve admin stats.');
-    }
+    const data = await apiRequest<{
+      success: boolean;
+      stats: AdminStats;
+    }>('/admin/stats');
+
     return data.stats;
   }
 
-  /**
-   * Get admin users list
-   */
+  // 11. ADMIN USERS
+
   public static async getAdminUsers(): Promise<User[]> {
-    const res = await fetch(`${API_BASE}/admin/users`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to retrieve users.');
-    }
+    const data = await apiRequest<{
+      success: boolean;
+      users: User[];
+    }>('/admin/users');
+
     return data.users || [];
   }
 
-  /**
-   * Load sample viva records
-   */
+  // 12. LOAD DEMO DATA
+
   public static async loadDemoData(): Promise<void> {
-    const res = await fetch(`${API_BASE}/demo-data`, {
-      method: 'POST',
-      headers: getAuthHeaders()
+    await apiRequest('/demo-data', {
+      method: 'POST'
     });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to load demo data.');
-    }
   }
 
-  /**
-   * Export records to CSV format
-   */
-  public static exportToCsv(records: AnalysisRecord[], filename = 'emotix_analyses.csv'): void {
+  // 13. EXPORT HISTORY TO CSV
+
+  public static exportToCsv(
+    records: AnalysisRecord[],
+    filename = 'emotix_analyses.csv'
+  ): void {
     if (records.length === 0) return;
 
-    const headers = ['ID', 'Date', 'Input Type', 'Predicted Emotion', 'Confidence', 'Faces Detected', 'Input/Transcript', 'Notes'];
-    const rows = records.map(r => [
-      r.id,
-      r.created_at,
-      r.input_type,
-      r.emotion,
-      (r.confidence * 100).toFixed(1) + '%',
-      r.face_count || 0,
-      `"${(r.text_input || r.transcript || r.image_filename || '').replace(/"/g, '""')}"`,
-      `"${(r.notes || '').replace(/"/g, '""')}"`
+    const headers = [
+      'ID',
+      'Date',
+      'Input Type',
+      'Predicted Emotion',
+      'Confidence',
+      'Faces Detected',
+      'Input/Transcript',
+      'Notes'
+    ];
+
+    const rows = records.map(record => [
+      record.id,
+      record.created_at,
+      record.input_type,
+      record.emotion,
+      (record.confidence * 100).toFixed(1) + '%',
+      record.face_count || 0,
+      `"${(
+        record.text_input ||
+        record.transcript ||
+        record.image_filename ||
+        ''
+      ).replace(/"/g, '""')}"`,
+      `"${(record.notes || '').replace(/"/g, '""')}"`
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob(
+      [csvContent],
+      { type: 'text/csv;charset=utf-8;' }
+    );
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+
     link.href = url;
     link.setAttribute('download', filename);
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
   }
 }
